@@ -1,0 +1,37 @@
+# Monorepo root ignores
+
+# Dependencies
+**/node_modules/
+**/package-lock.json
+
+# Build artifacts
+**/dist/
+**/build/
+**/.cache/
+**/.parcel-cache/
+**/.vite/
+
+# Environment and secrets
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Logs
+**/*.log
+**/logs/
+
+# IDE/editor
+.vscode/
+.idea/
+**/*.swp
+**/*.swo
+**/*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python cache (if any tooling added later)
+**/__pycache__/
+**/*.pyc
