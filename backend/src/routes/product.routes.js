@@ -6,6 +6,7 @@ const productController = require('../controllers/product.controller');
 const auth = require('../middleware/auth');
 const admin = require('../middleware/admin');
 const { validate, validateQuery } = require('../middleware/validate');
+const validateObjectId = require('../middleware/validateObjectId');
 const productValidator = require('../validators/product.validator');
 
 // Public routes
@@ -19,7 +20,7 @@ router.get(
 router.get('/admin/all', auth, admin, productController.getAllProductsAdmin);
 
 // Public single product
-router.get('/:id', productController.getProduct);
+router.get('/:id', validateObjectId(), productController.getProduct);
 
 router.post(
   '/',
@@ -33,10 +34,11 @@ router.put(
   '/:id',
   auth,
   admin,
+  validateObjectId(),
   validate(productValidator.updateProduct),
   productController.updateProduct
 );
 
-router.delete('/:id', auth, admin, productController.deleteProduct);
+router.delete('/:id', auth, admin, validateObjectId(), productController.deleteProduct);
 
 module.exports = router;

@@ -58,7 +58,7 @@ const getProducts = asyncHandler(async (req, res) => {
  * Public – Get single product detail.
  */
 const getProduct = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id).lean();
+  const product = await Product.findOne({ _id: req.params.id, isActive: true }).lean();
 
   if (!product) {
     throw new AppError('Product not found.', 404, 'PRODUCT_NOT_FOUND');

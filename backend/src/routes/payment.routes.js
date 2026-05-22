@@ -5,6 +5,7 @@ const router = express.Router();
 const paymentController = require('../controllers/payment.controller');
 const auth = require('../middleware/auth');
 const { validate, validateQuery } = require('../middleware/validate');
+const validateObjectId = require('../middleware/validateObjectId');
 const { paymentLimiter } = require('../middleware/rateLimiter');
 const paymentValidator = require('../validators/payment.validator');
 
@@ -39,6 +40,6 @@ router.get(
   paymentController.getMyOrders
 );
 
-router.get('/orders/my/:id', auth, paymentController.getMyOrder);
+router.get('/orders/my/:id', auth, validateObjectId(), paymentController.getMyOrder);
 
 module.exports = router;

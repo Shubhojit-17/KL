@@ -178,22 +178,22 @@ async function verifyAndFinalizePayment(userId, razorpay_order_id, razorpay_paym
     throw new AppError('Payment verification failed. Invalid signature.', 400, 'INVALID_SIGNATURE');
   }
 
-  // 2. Find and update order inside a transaction
+  // 2. Atomically claim the order – prevents race with webhook
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const order = await Order.findOne({ razorpay_order_id, user: userId }).session(session);
+    const order = await Order.findOneAndUpdate(
+      { razorpay_order_id, user: userId, paymentStatus: { $ne: 'paid' } },
+      { $set: { paymentStatus: 'paid' } },
+      { session, new: true }
+    );
 
     if (!order) {
-      throw new AppError('Order not found.', 404, 'ORDER_NOT_FOUND');
-    }
-
-    // Idempotent: if already paid, return success without re-processing
-    if (order.paymentStatus === 'paid') {
       await session.abortTransaction();
+      const existing = await Order.findOne({ razorpay_order_id, user: userId });
       logger.info('Duplicate payment verification – already paid', { razorpay_order_id });
-      return order;
+      return existing;
     }
 
     // 3. Reduce stock atomically for each item
@@ -218,10 +218,9 @@ async function verifyAndFinalizePayment(userId, razorpay_order_id, razorpay_paym
       }
     }
 
-    // 4. Update order
+    // 4. Complete order fields
     order.razorpay_payment_id = razorpay_payment_id;
     order.razorpay_signature = razorpay_signature;
-    order.paymentStatus = 'paid';
     order.orderStatus = 'confirmed';
     await order.save({ session });
 
@@ -278,51 +277,51 @@ async function handleWebhookEvent(rawBody, webhookSignature) {
     const razorpayOrderId = payment.order_id;
     const razorpayPaymentId = payment.id;
 
-    const order = await Order.findOne({ razorpay_order_id: razorpayOrderId });
+    const order = await Order.findOneAndUpdate(
+      { razorpay_order_id: razorpayOrderId, paymentStatus: { $ne: 'paid' } },
+      { $set: { paymentStatus: 'paid' } },
+      { new: true }
+    );
     if (!order) {
-      logger.warn('Webhook: Order not found for razorpay_order_id', { razorpayOrderId });
+      logger.info('Webhook: Order already paid by another path', { razorpayOrderId });
       return;
     }
 
-    // Only update if not already paid (idempotent)
-    if (order.paymentStatus !== 'paid') {
-      const session = await mongoose.startSession();
-      session.startTransaction();
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-      try {
-        // Reduce stock atomically
-        for (const item of order.items) {
-          const result = await Product.findOneAndUpdate(
-            { _id: item.product, stock: { $gte: item.quantity } },
-            { $inc: { stock: -item.quantity } },
-            { session, new: true }
-          );
+    try {
+      // Reduce stock atomically
+      for (const item of order.items) {
+        const result = await Product.findOneAndUpdate(
+          { _id: item.product, stock: { $gte: item.quantity } },
+          { $inc: { stock: -item.quantity } },
+          { session, new: true }
+        );
 
-          if (!result) {
-            logger.error('Webhook: Stock race condition', {
-              productId: item.product.toString(),
-              item: item.name,
-            });
-            // Don't throw; still mark as paid since money is captured. Handle manually.
-          }
+        if (!result) {
+          logger.error('Webhook: Stock race condition', {
+            productId: item.product.toString(),
+            item: item.name,
+          });
+          // Don't throw; still mark as paid since money is captured. Handle manually.
         }
-
-        order.razorpay_payment_id = razorpayPaymentId;
-        order.paymentStatus = 'paid';
-        order.orderStatus = 'confirmed';
-        await order.save({ session });
-
-        // Clear user cart
-        await Cart.findOneAndUpdate({ user: order.user }, { items: [] }, { session });
-
-        await session.commitTransaction();
-        logger.info('Webhook: Order updated to paid', { orderId: order._id.toString() });
-      } catch (err) {
-        await session.abortTransaction();
-        logger.error('Webhook: Transaction failed', { error: err.message });
-      } finally {
-        session.endSession();
       }
+
+      order.razorpay_payment_id = razorpayPaymentId;
+      order.orderStatus = 'confirmed';
+      await order.save({ session });
+
+      // Clear user cart
+      await Cart.findOneAndUpdate({ user: order.user }, { items: [] }, { session });
+
+      await session.commitTransaction();
+      logger.info('Webhook: Order updated to paid', { orderId: order._id.toString() });
+    } catch (err) {
+      await session.abortTransaction();
+      logger.error('Webhook: Transaction failed', { error: err.message });
+    } finally {
+      session.endSession();
     }
   } else if (event === 'payment.failed') {
     const razorpayOrderId = payment.order_id;

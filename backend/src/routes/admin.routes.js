@@ -7,6 +7,7 @@ const paymentController = require('../controllers/payment.controller');
 const auth = require('../middleware/auth');
 const admin = require('../middleware/admin');
 const { validate, validateQuery } = require('../middleware/validate');
+const validateObjectId = require('../middleware/validateObjectId');
 const adminValidator = require('../validators/admin.validator');
 const paymentValidator = require('../validators/payment.validator');
 
@@ -40,6 +41,7 @@ router.get(
 // PUT /api/admin/orders/:id/status – Update order status
 router.put(
   '/orders/:id/status',
+  validateObjectId(),
   validate(paymentValidator.updateOrderStatus),
   paymentController.updateOrderStatus
 );
