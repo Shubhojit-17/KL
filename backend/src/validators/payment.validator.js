@@ -27,6 +27,7 @@ const createOrder = Joi.object({
     'string.guid': 'idempotencyKey must be a valid UUID v4',
     'any.required': 'idempotencyKey is required to prevent duplicate orders',
   }),
+  couponCode: Joi.string().trim().max(20).allow('', null),
 });
 
 const verifyPayment = Joi.object({

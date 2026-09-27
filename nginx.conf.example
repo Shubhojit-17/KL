@@ -1,0 +1,47 @@
+# ─────────────────────────────────────────────────────────────
+# Nginx Configuration for KL Vase on Ubuntu (Hostinger VPS)
+# Place in: /etc/nginx/sites-available/klvase
+# Symlink:  sudo ln -s /etc/nginx/sites-available/klvase /etc/nginx/sites-enabled/
+# ─────────────────────────────────────────────────────────────
+
+server {
+    listen 80;
+    server_name yourdomain.com www.yourdomain.com;
+
+    # Redirect HTTP to HTTPS (Certbot will configure this automatically)
+    # return 301 https://$host$request_uri;
+
+    # 1. Frontend SPA (Vite build)
+    root /var/www/kl-vase/frontend/dist;
+    index index.html;
+
+    # Enable Gzip compression
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript image/svg+xml;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 2. Uploaded product images (served directly by Nginx for high speed)
+    location /uploads/ {
+        alias /var/www/kl-vase/backend/public/uploads/;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000, immutable";
+        access_log off;
+    }
+
+    # 3. Backend API Reverse Proxy
+    location /api/ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        client_max_body_size 10M;
+    }
+}

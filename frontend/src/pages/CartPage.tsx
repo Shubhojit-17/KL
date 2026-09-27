@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { getImageUrl } from '@/lib/image';
 
 export default function CartPage() {
   const { items, totalPrice, loading, updateQuantity, removeItem } = useCart();
@@ -65,7 +66,7 @@ export default function CartPage() {
                   <Link to={`/product/${item.product._id}`} className="shrink-0">
                     <div className="w-20 h-24 md:w-24 md:h-32 overflow-hidden">
                       <img
-                        src={item.product.images?.[0] || '/placeholder.jpg'}
+                        src={getImageUrl(item.product.images?.[0])}
                         alt={item.product.name}
                         className="w-full h-full object-cover"
                       />

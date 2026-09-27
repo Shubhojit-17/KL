@@ -84,6 +84,10 @@ const orderSchema = new mongoose.Schema(
       unique: true,
       sparse: true, // allow nulls but enforce uniqueness when present
     },
+    coupon: {
+      code: { type: String, default: null },
+      discountAmount: { type: Number, default: 0 },
+    },
   },
   {
     timestamps: true,

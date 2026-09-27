@@ -1,18 +1,31 @@
 import api from '@/lib/axios';
 
 export interface User {
-  _id: string;
+  id: string;
+  _id?: string;
   name: string;
   email: string;
   picture?: string;
   role: 'user' | 'admin';
-  createdAt: string;
+  createdAt?: string;
 }
 
 export const authService = {
   /** Send Google ID token to backend */
   googleLogin: async (idToken: string): Promise<User> => {
     const { data } = await api.post('/auth/google', { idToken });
+    return data.data?.user ?? data.user;
+  },
+
+  /** Register with email and password */
+  register: async (name: string, email: string, password: string): Promise<User> => {
+    const { data } = await api.post('/auth/register', { name, email, password });
+    return data.data?.user ?? data.user;
+  },
+
+  /** Login with email and password */
+  login: async (email: string, password: string): Promise<User> => {
+    const { data } = await api.post('/auth/login', { email, password });
     return data.data?.user ?? data.user;
   },
 

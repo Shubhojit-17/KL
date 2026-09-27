@@ -6,6 +6,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
+import { AxiosError } from 'axios';
 import { cartService, type Cart, type CartItem } from '@/services/cart.service';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
@@ -21,6 +22,14 @@ interface CartContextType {
   removeItem: (productId: string) => Promise<void>;
   clearCart: () => Promise<void>;
   refreshCart: () => Promise<void>;
+}
+
+/** Extract error message from backend { success, error: { code, message } } shape */
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof AxiosError) {
+    return err.response?.data?.error?.message || fallback;
+  }
+  return fallback;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -55,8 +64,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const c = await cartService.addToCart(productId, quantity);
       setCart(c);
       toast.success('Added to cart');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to add to cart');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to add to cart'));
     }
   };
 
@@ -64,8 +73,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       const c = await cartService.updateCartItem(productId, quantity);
       setCart(c);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to update cart');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to update cart'));
     }
   };
 
@@ -74,8 +83,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const c = await cartService.removeFromCart(productId);
       setCart(c);
       toast.success('Removed from cart');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to remove item');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to remove item'));
     }
   };
 
@@ -83,8 +92,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       await cartService.clearCart();
       setCart(null);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to clear cart');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to clear cart'));
     }
   };
 

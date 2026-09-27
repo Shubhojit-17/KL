@@ -15,29 +15,28 @@ function errorHandler(err, req, res, _next) {
   // Default values
   let statusCode = err.statusCode || 500;
   let message = err.message || 'Internal Server Error';
-  let code = err.code || 'INTERNAL_ERROR';
+  let code;
 
-  // Mongoose validation error
+  // Mongoose-specific errors (check before generic err.code to avoid
+  // conflating Mongoose's numeric err.code=11000 with application error codes)
   if (err.name === 'ValidationError') {
     statusCode = 400;
     code = 'VALIDATION_ERROR';
     const messages = Object.values(err.errors).map((e) => e.message);
     message = messages.join('. ');
-  }
-
-  // Mongoose duplicate key error
-  if (err.code === 11000) {
+  } else if (err.code === 11000) {
+    // Mongoose duplicate key error
     statusCode = 409;
     code = 'DUPLICATE_KEY';
     const field = Object.keys(err.keyValue || {}).join(', ');
     message = `Duplicate value for: ${field}`;
-  }
-
-  // Mongoose cast error (bad ObjectId)
-  if (err.name === 'CastError') {
+  } else if (err.name === 'CastError') {
+    // Mongoose cast error (bad ObjectId)
     statusCode = 400;
     code = 'INVALID_ID';
     message = `Invalid ${err.path}: ${err.value}`;
+  } else {
+    code = err.code || 'INTERNAL_ERROR';
   }
 
   // Log the error

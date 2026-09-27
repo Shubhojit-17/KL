@@ -1,11 +1,14 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { Shield, Lock, CreditCard } from 'lucide-react';
+import { Shield, Lock, CreditCard, Tag, Check, MapPin, X } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { paymentService } from '@/services/payment.service';
+import { userService, type Address } from '@/services/user.service';
+import { couponService, type CouponValidationResult } from '@/services/coupon.service';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
+import { getImageUrl } from '@/lib/image';
 
 declare global {
   interface Window {
@@ -28,6 +31,11 @@ export default function CheckoutPage() {
   const { items, totalPrice, refreshCart } = useCart();
   const checkoutAttemptKey = useRef<string | null>(null);
   const [processing, setProcessing] = useState(false);
+
+  // Form & Saved Addresses
+  const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>('');
+  const [saveToProfile, setSaveToProfile] = useState(false);
   const [form, setForm] = useState<ShippingForm>({
     fullName: '',
     phone: '',
@@ -38,8 +46,74 @@ export default function CheckoutPage() {
     pincode: '',
   });
 
+  // Coupons
+  const [couponCodeInput, setCouponCodeInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
+
+  useEffect(() => {
+    const fetchAddresses = async () => {
+      try {
+        const list = await userService.getAddresses();
+        setSavedAddresses(list);
+        if (list.length > 0) {
+          const def = list.find((a) => a.isDefault) || list[0];
+          setSelectedAddressId(def._id || '');
+          setForm({
+            fullName: def.fullName,
+            phone: def.phone,
+            addressLine1: def.addressLine1,
+            addressLine2: def.addressLine2 || '',
+            city: def.city,
+            state: def.state,
+            pincode: def.pincode,
+          });
+        }
+      } catch {
+        // user may not have addresses or profile
+      }
+    };
+    fetchAddresses();
+  }, []);
+
+  const handleSelectAddress = (addr: Address) => {
+    setSelectedAddressId(addr._id || '');
+    setForm({
+      fullName: addr.fullName,
+      phone: addr.phone,
+      addressLine1: addr.addressLine1,
+      addressLine2: addr.addressLine2 || '',
+      city: addr.city,
+      state: addr.state,
+      pincode: addr.pincode,
+    });
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedAddressId(''); // custom edit
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleApplyCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!couponCodeInput.trim()) return;
+
+    setValidatingCoupon(true);
+    try {
+      const res = await couponService.validateCoupon(couponCodeInput.trim(), totalPrice);
+      setAppliedCoupon(res);
+      toast.success(`Coupon "${res.code}" applied! You saved ₹${res.discountAmount}`);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || err?.response?.data?.message || 'Invalid coupon code';
+      toast.error(msg);
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCodeInput('');
   };
 
   const loadRazorpayScript = (): Promise<boolean> => {
@@ -55,6 +129,8 @@ export default function CheckoutPage() {
       document.body.appendChild(script);
     });
   };
+
+  const finalPayable = appliedCoupon ? appliedCoupon.finalAmount : totalPrice;
 
   const handlePayment = async () => {
     // Validate form
@@ -91,6 +167,20 @@ export default function CheckoutPage() {
         return;
       }
 
+      // Optionally save to profile if user selected saveToProfile
+      if (saveToProfile && !selectedAddressId) {
+        userService.addAddress({
+          fullName: form.fullName,
+          phone: form.phone,
+          addressLine1: form.addressLine1,
+          addressLine2: form.addressLine2,
+          city: form.city,
+          state: form.state,
+          pincode: form.pincode,
+          country: 'India',
+        }).catch(() => {});
+      }
+
       const orderData = await paymentService.createOrder(
         {
           fullName: form.fullName,
@@ -101,7 +191,8 @@ export default function CheckoutPage() {
           state: form.state,
           pincode: form.pincode,
         },
-        checkoutAttemptKey.current
+        checkoutAttemptKey.current,
+        appliedCoupon?.code
       );
 
       const options = {
@@ -109,8 +200,8 @@ export default function CheckoutPage() {
         amount: orderData.amount,
         currency: orderData.currency || 'INR',
         order_id: orderData.razorpayOrderId,
-        name: 'Luxury Atelier',
-        description: 'Payment for your curated selection',
+        name: 'KL Vase Atelier',
+        description: 'Payment for bespoke artisan vases',
         handler: async (response: any) => {
           try {
             await paymentService.verifyPayment({
@@ -144,7 +235,12 @@ export default function CheckoutPage() {
       const rzp = new window.Razorpay(options);
       rzp.open();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to create order');
+      // Robust error handling matching backend shape
+      const msg =
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.message ||
+        'Failed to create order';
+      toast.error(msg);
       setProcessing(false);
     }
   };
@@ -199,9 +295,37 @@ export default function CheckoutPage() {
             transition={{ delay: 0.2 }}
             className="lg:col-span-3 space-y-8"
           >
-            <h2 className="font-['Cormorant_Garamond'] text-2xl text-[#FDFBF7] mb-6">
-              Shipping Address
-            </h2>
+            <div>
+              <h2 className="font-['Cormorant_Garamond'] text-2xl text-[#FDFBF7] mb-4">
+                Shipping Address
+              </h2>
+
+              {/* Saved Addresses Selector */}
+              {savedAddresses.length > 0 && (
+                <div className="mb-6 p-4 border border-[#C5A059]/20 bg-[#4A3528]/40">
+                  <p className="font-['Montserrat'] text-[11px] text-[#C5A059] uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    <MapPin size={13} /> Select from Saved Addresses:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {savedAddresses.map((addr) => (
+                      <button
+                        key={addr._id}
+                        type="button"
+                        onClick={() => handleSelectAddress(addr)}
+                        className={`px-3 py-1.5 font-['Montserrat'] text-xs border transition-all text-left ${
+                          selectedAddressId === addr._id
+                            ? 'border-[#C5A059] bg-[#C5A059]/20 text-[#FDFBF7]'
+                            : 'border-[#C5A059]/30 text-[#FDFBF7]/60 hover:border-[#C5A059]/60'
+                        }`}
+                      >
+                        <span className="font-semibold text-white">{addr.fullName}</span> ({addr.city})
+                        {addr.isDefault && ' ★'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <input
               name="fullName"
@@ -215,7 +339,7 @@ export default function CheckoutPage() {
               name="phone"
               value={form.phone}
               onChange={handleChange}
-              placeholder="Phone Number"
+              placeholder="Phone Number (10 digits)"
               className={inputClass}
             />
 
@@ -258,16 +382,30 @@ export default function CheckoutPage() {
                 className={inputClass}
               />
             </div>
+
+            {!selectedAddressId && (
+              <label className="flex items-center gap-3 pt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={saveToProfile}
+                  onChange={(e) => setSaveToProfile(e.target.checked)}
+                  className="accent-[#C5A059]"
+                />
+                <span className="font-['Montserrat'] text-xs text-[#FDFBF7]/70 uppercase tracking-wider">
+                  Save this address to my profile for future orders
+                </span>
+              </label>
+            )}
           </motion.div>
 
-          {/* Order Summary – 2 cols */}
+          {/* Order Summary & Payment – 2 cols */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="lg:col-span-2"
+            className="lg:col-span-2 space-y-6"
           >
-            <h2 className="font-['Cormorant_Garamond'] text-2xl text-[#FDFBF7] mb-6">
+            <h2 className="font-['Cormorant_Garamond'] text-2xl text-[#FDFBF7]">
               Order Summary
             </h2>
 
@@ -278,9 +416,9 @@ export default function CheckoutPage() {
                   className="flex justify-between items-center text-sm"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-12 overflow-hidden shrink-0">
+                    <div className="w-10 h-12 overflow-hidden shrink-0 border border-[#C5A059]/20">
                       <img
-                        src={item.product.images?.[0] || '/placeholder.jpg'}
+                        src={getImageUrl(item.product.images?.[0])}
                         alt={item.product.name}
                         className="w-full h-full object-cover"
                       />
@@ -300,15 +438,68 @@ export default function CheckoutPage() {
                 </div>
               ))}
 
+              {/* Coupon Code Section */}
+              <div className="pt-4 border-t border-[#C5A059]/20">
+                {appliedCoupon ? (
+                  <div className="flex justify-between items-center p-3 bg-[#C5A059]/10 border border-[#C5A059]/30">
+                    <div className="flex items-center gap-2">
+                      <Tag size={14} className="text-[#C5A059]" />
+                      <div>
+                        <span className="font-['Montserrat'] font-bold text-xs text-[#C5A059]">
+                          {appliedCoupon.code}
+                        </span>
+                        <p className="font-['Montserrat'] text-[10px] text-green-400">
+                          -₹{appliedCoupon.discountAmount.toLocaleString('en-IN')} off
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleRemoveCoupon}
+                      className="text-[#FDFBF7]/50 hover:text-red-400"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleApplyCoupon} className="flex gap-2">
+                    <input
+                      value={couponCodeInput}
+                      onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
+                      placeholder="Promo / Coupon code"
+                      className="bg-transparent border-b border-[#C5A059]/30 text-[#FDFBF7] font-['Montserrat'] text-xs py-2 px-1 focus:outline-none focus:border-[#C5A059] flex-1 uppercase placeholder:normal-case placeholder:text-[#FDFBF7]/30"
+                    />
+                    <button
+                      type="submit"
+                      disabled={validatingCoupon || !couponCodeInput.trim()}
+                      className="px-4 py-2 border border-[#C5A059] text-[#C5A059] font-['Montserrat'] text-[10px] uppercase tracking-wider hover:bg-[#C5A059] hover:text-[#4A3528] transition-all disabled:opacity-40"
+                    >
+                      {validatingCoupon ? '...' : 'Apply'}
+                    </button>
+                  </form>
+                )}
+              </div>
+
               <div className="h-[1px] bg-[#C5A059]/20 my-4" />
 
-              <div className="flex justify-between items-center">
-                <span className="font-['Montserrat'] text-[#FDFBF7]/60 text-xs tracking-[0.2em] uppercase">
-                  Total
-                </span>
-                <span className="font-['Cormorant_Garamond'] text-2xl text-[#C5A059]">
-                  ₹{totalPrice.toLocaleString('en-IN')}
-                </span>
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs font-['Montserrat'] text-[#FDFBF7]/70">
+                  <span>Subtotal</span>
+                  <span>₹{totalPrice.toLocaleString('en-IN')}</span>
+                </div>
+                {appliedCoupon && (
+                  <div className="flex justify-between text-xs font-['Montserrat'] text-green-400">
+                    <span>Discount ({appliedCoupon.code})</span>
+                    <span>-₹{appliedCoupon.discountAmount.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pt-2">
+                  <span className="font-['Montserrat'] text-[#FDFBF7]/60 text-xs tracking-[0.2em] uppercase font-semibold">
+                    Total
+                  </span>
+                  <span className="font-['Cormorant_Garamond'] text-2xl text-[#C5A059] font-bold">
+                    ₹{finalPayable.toLocaleString('en-IN')}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -316,13 +507,13 @@ export default function CheckoutPage() {
             <button
               onClick={handlePayment}
               disabled={processing}
-              className="w-full mt-8 py-4 border border-[#C5A059] text-[#C5A059] font-['Montserrat'] tracking-[0.2em] uppercase text-xs hover:bg-gradient-to-r hover:from-[#C5A059] hover:to-[#E8D0A9] hover:text-[#4A3528] transition-all duration-400 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full py-4 border border-[#C5A059] text-[#C5A059] font-['Montserrat'] tracking-[0.2em] uppercase text-xs hover:bg-gradient-to-r hover:from-[#C5A059] hover:to-[#E8D0A9] hover:text-[#4A3528] transition-all duration-400 disabled:opacity-40 disabled:cursor-not-allowed font-semibold"
             >
-              {processing ? 'Processing...' : 'Pay Now'}
+              {processing ? 'Processing Payment...' : `Pay ₹${finalPayable.toLocaleString('en-IN')}`}
             </button>
 
             {/* Trust Badges */}
-            <div className="flex items-center justify-center gap-6 mt-8 text-[#C5A059]/40">
+            <div className="flex items-center justify-center gap-6 text-[#C5A059]/40 pt-2">
               <div className="flex items-center gap-2">
                 <Shield size={14} />
                 <span className="font-['Montserrat'] text-[10px] tracking-widest uppercase">

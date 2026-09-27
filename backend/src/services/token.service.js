@@ -41,7 +41,7 @@ function setAuthCookies(res, accessToken, refreshToken) {
   const commonOptions = {
     httpOnly: true,
     secure: isProd,
-    sameSite: 'strict',
+    sameSite: 'lax',
     path: '/',
   };
 
@@ -64,7 +64,7 @@ function clearAuthCookies(res) {
   const commonOptions = {
     httpOnly: true,
     secure: isProd,
-    sameSite: 'strict',
+    sameSite: 'lax',
     path: '/',
   };
 

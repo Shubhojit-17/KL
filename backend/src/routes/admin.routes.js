@@ -4,6 +4,7 @@ const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/admin.controller');
 const paymentController = require('../controllers/payment.controller');
+const metricsController = require('../controllers/admin.metrics.controller');
 const auth = require('../middleware/auth');
 const admin = require('../middleware/admin');
 const { validate, validateQuery } = require('../middleware/validate');
@@ -13,6 +14,9 @@ const paymentValidator = require('../validators/payment.validator');
 
 // All admin routes require auth + admin
 router.use(auth, admin);
+
+// GET /api/admin/metrics – Dashboard summary metrics
+router.get('/metrics', metricsController.getMetrics);
 
 // POST /api/admin/assign-admin – Promote user to admin
 router.post(

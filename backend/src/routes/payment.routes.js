@@ -42,4 +42,8 @@ router.get(
 
 router.get('/orders/my/:id', auth, validateObjectId(), paymentController.getMyOrder);
 
+// Cancel order (Customer)
+router.post('/orders/my/:id/cancel', auth, validateObjectId(), paymentController.cancelOrder);
+router.put('/orders/my/:id/cancel', auth, validateObjectId(), paymentController.cancelOrder);
+
 module.exports = router;

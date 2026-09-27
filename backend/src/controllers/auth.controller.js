@@ -1,6 +1,7 @@
 'use strict';
 
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const { verifyGoogleToken } = require('../config/google');
 const {
@@ -9,6 +10,7 @@ const {
   setAuthCookies,
   clearAuthCookies,
 } = require('../services/token.service');
+const emailService = require('../services/email.service');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
@@ -28,21 +30,30 @@ const googleLogin = asyncHandler(async (req, res) => {
   }
 
   // Find or create user
-  let user = await User.findOne({ googleId: googleUser.googleId });
+  let user = await User.findOne({
+    $or: [{ googleId: googleUser.googleId }, { email: googleUser.email.toLowerCase() }],
+  });
+
+  const isNew = !user;
 
   if (!user) {
-    // Auto-assign admin role for designated email (from env, never hardcoded)
     const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || '').toLowerCase();
     const role = superAdminEmail && googleUser.email.toLowerCase() === superAdminEmail ? 'admin' : 'user';
 
     user = await User.create({
       name: googleUser.name,
-      email: googleUser.email,
+      email: googleUser.email.toLowerCase(),
       googleId: googleUser.googleId,
+      authProvider: 'google',
       role,
     });
 
-    logger.info('New user registered', { email: user.email, role: user.role });
+    logger.info('New user registered via Google', { email: user.email, role: user.role });
+    emailService.sendWelcomeEmail(user).catch(() => {});
+  } else if (!user.googleId) {
+    // Link existing account with Google ID
+    user.googleId = googleUser.googleId;
+    await user.save();
   }
 
   // Generate tokens
@@ -53,6 +64,108 @@ const googleLogin = asyncHandler(async (req, res) => {
   setAuthCookies(res, accessToken, refreshToken);
 
   logger.info('User logged in', { email: user.email });
+
+  res.status(200).json({
+    success: true,
+    data: {
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    },
+  });
+});
+
+/**
+ * POST /api/auth/register
+ * Register with email and password
+ */
+const registerLocal = asyncHandler(async (req, res) => {
+  const { name, email, password } = req.body;
+
+  if (!name || !email || !password) {
+    throw new AppError('Name, email, and password are required.', 400, 'VALIDATION_ERROR');
+  }
+
+  if (password.length < 6) {
+    throw new AppError('Password must be at least 6 characters.', 400, 'PASSWORD_TOO_SHORT');
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const existingUser = await User.findOne({ email: normalizedEmail });
+
+  if (existingUser) {
+    throw new AppError('An account with this email already exists. Please log in.', 400, 'EMAIL_EXISTS');
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 12);
+  const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || '').toLowerCase();
+  const role = superAdminEmail && normalizedEmail === superAdminEmail ? 'admin' : 'user';
+
+  const user = await User.create({
+    name: name.trim(),
+    email: normalizedEmail,
+    password: hashedPassword,
+    authProvider: 'local',
+    role,
+  });
+
+  emailService.sendWelcomeEmail(user).catch(() => {});
+
+  const accessToken = generateAccessToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+  setAuthCookies(res, accessToken, refreshToken);
+
+  logger.info('New local user registered', { email: user.email, role: user.role });
+
+  res.status(201).json({
+    success: true,
+    message: 'Registration successful.',
+    data: {
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    },
+  });
+});
+
+/**
+ * POST /api/auth/login
+ * Log in with email and password
+ */
+const loginLocal = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    throw new AppError('Email and password are required.', 400, 'VALIDATION_ERROR');
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await User.findOne({ email: normalizedEmail }).select('+password');
+
+  if (!user) {
+    throw new AppError('Invalid email or password.', 401, 'INVALID_CREDENTIALS');
+  }
+
+  if (!user.password) {
+    throw new AppError('This account was registered using Google. Please sign in with Google.', 400, 'GOOGLE_AUTH_REQUIRED');
+  }
+
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    throw new AppError('Invalid email or password.', 401, 'INVALID_CREDENTIALS');
+  }
+
+  const accessToken = generateAccessToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+  setAuthCookies(res, accessToken, refreshToken);
+
+  logger.info('User logged in with credentials', { email: user.email });
 
   res.status(200).json({
     success: true,
@@ -146,4 +259,11 @@ const getMe = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { googleLogin, refreshAccessToken, logout, getMe };
+module.exports = {
+  googleLogin,
+  registerLocal,
+  loginLocal,
+  refreshAccessToken,
+  logout,
+  getMe,
+};

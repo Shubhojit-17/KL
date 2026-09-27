@@ -1,7 +1,40 @@
+import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Mail, Phone, MapPin, Clock } from 'lucide-react';
+import { Mail, Phone, MapPin, Clock, Send } from 'lucide-react';
+import { contactService } from '@/services/contact.service';
+import toast from 'react-hot-toast';
 
 export default function ContactPage() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim() || !message.trim()) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await contactService.submitInquiry({
+        name: name.trim(),
+        email: email.trim(),
+        message: message.trim(),
+      });
+      toast.success('Thank you for reaching out. We will get back to you shortly.');
+      setName('');
+      setEmail('');
+      setMessage('');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to send message');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <section className="py-16 md:py-24 bg-[#4A3528] px-6 min-h-screen">
       <div className="max-w-5xl mx-auto">
@@ -29,8 +62,8 @@ export default function ContactPage() {
               Customer Support
             </h2>
             <p className="font-['Montserrat'] text-[#FDFBF7]/70 text-sm leading-relaxed">
-              For order updates, product questions, shipping support, or custom requests,
-              contact our team and we will respond as quickly as possible.
+              For order updates, product inquiries, bespoke commissions, or shipping inquiries,
+              reach out to our atelier team and we will respond within 24 hours.
             </p>
 
             <div className="space-y-4">
@@ -72,27 +105,37 @@ export default function ContactPage() {
             <h2 className="font-['Cormorant_Garamond'] text-3xl text-[#FDFBF7] mb-6">
               Send A Message
             </h2>
-            <form className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <input
                 type="text"
-                placeholder="Full Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Full Name *"
+                required
                 className="w-full bg-transparent border-b border-[#C5A059]/30 text-[#FDFBF7] font-['Montserrat'] text-sm py-3 px-1 focus:outline-none focus:border-[#C5A059] placeholder:text-[#FDFBF7]/30"
               />
               <input
                 type="email"
-                placeholder="Email Address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email Address *"
+                required
                 className="w-full bg-transparent border-b border-[#C5A059]/30 text-[#FDFBF7] font-['Montserrat'] text-sm py-3 px-1 focus:outline-none focus:border-[#C5A059] placeholder:text-[#FDFBF7]/30"
               />
               <textarea
                 rows={5}
-                placeholder="Your Message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Your Message *"
+                required
                 className="w-full bg-transparent border border-[#C5A059]/30 text-[#FDFBF7] font-['Montserrat'] text-sm py-3 px-3 focus:outline-none focus:border-[#C5A059] placeholder:text-[#FDFBF7]/30 resize-none"
               />
               <button
-                type="button"
-                className="px-8 py-3 border border-[#C5A059] text-[#C5A059] font-['Montserrat'] tracking-[0.2em] uppercase text-xs hover:bg-[#C5A059] hover:text-[#4A3528] transition-all"
+                type="submit"
+                disabled={submitting}
+                className="px-8 py-3 border border-[#C5A059] text-[#C5A059] font-['Montserrat'] tracking-[0.2em] uppercase text-xs hover:bg-[#C5A059] hover:text-[#4A3528] transition-all flex items-center gap-2 disabled:opacity-40"
               >
-                Submit Inquiry
+                <Send size={14} /> {submitting ? 'Sending...' : 'Submit Inquiry'}
               </button>
             </form>
           </motion.div>

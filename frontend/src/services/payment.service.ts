@@ -3,16 +3,18 @@ import { v4 as uuidv4 } from 'uuid';
 
 export interface Order {
   _id: string;
-  user: string;
+  user: any;
   items: {
     product: {
       _id: string;
       name: string;
       price: number;
       images: string[];
+      category?: string;
     };
     quantity: number;
     price: number;
+    name?: string;
   }[];
   shippingAddress: {
     fullName: string;
@@ -22,8 +24,13 @@ export interface Order {
     city: string;
     state: string;
     pincode: string;
+    country?: string;
   };
   totalAmount: number;
+  coupon?: {
+    code: string;
+    discountAmount: number;
+  };
   razorpay_order_id?: string;
   razorpay_payment_id?: string;
   paymentStatus: 'pending' | 'paid' | 'failed';
@@ -38,17 +45,20 @@ export interface RazorpayOrder {
   amount: number;
   currency: string;
   keyId: string;
+  discountAmount?: number;
 }
 
 export const paymentService = {
   createOrder: async (
     shippingAddress: Order['shippingAddress'],
-    idempotencyKey?: string
+    idempotencyKey?: string,
+    couponCode?: string
   ): Promise<RazorpayOrder> => {
     const requestKey = idempotencyKey || uuidv4();
     const { data } = await api.post('/payment/create-order', {
       shippingAddress,
       idempotencyKey: requestKey,
+      couponCode: couponCode || undefined,
     });
     const payload = data.data ?? data;
 
@@ -58,6 +68,7 @@ export const paymentService = {
       amount: payload.amount,
       currency: payload.currency ?? 'INR',
       keyId: payload.keyId ?? payload.key_id,
+      discountAmount: payload.discountAmount,
     };
   },
 
@@ -88,6 +99,11 @@ export const paymentService = {
 
   getMyOrder: async (id: string): Promise<Order> => {
     const { data } = await api.get(`/payment/orders/my/${id}`);
+    return data.data?.order ?? data.order ?? data.data;
+  },
+
+  cancelOrder: async (id: string): Promise<Order> => {
+    const { data } = await api.post(`/payment/orders/my/${id}/cancel`);
     return data.data?.order ?? data.order ?? data.data;
   },
 };

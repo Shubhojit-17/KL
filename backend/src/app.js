@@ -9,6 +9,8 @@ const compression = require('compression');
 const mongoSanitize = require('express-mongo-sanitize');
 const hpp = require('hpp');
 
+const path = require('path');
+
 const routes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
 const notFound = require('./middleware/notFound');
@@ -24,7 +26,7 @@ const isProd = process.env.NODE_ENV === 'production';
 // ──────────────────────────────────────────────
 // 1. Security headers
 // ──────────────────────────────────────────────
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 // ──────────────────────────────────────────────
 // 2. CORS – strict origin in production
@@ -123,17 +125,23 @@ if (isProd) {
 }
 
 // ──────────────────────────────────────────────
-// 10. Global rate limiter
+// 10. Static uploads
+// ──────────────────────────────────────────────
+const uploadsPath = process.env.UPLOADS_DIR || path.join(__dirname, '../public/uploads');
+app.use('/uploads', express.static(uploadsPath));
+
+// ──────────────────────────────────────────────
+// 11. Global rate limiter
 // ──────────────────────────────────────────────
 app.use('/api', apiLimiter);
 
 // ──────────────────────────────────────────────
-// 11. API routes
+// 12. API routes
 // ──────────────────────────────────────────────
 app.use('/api', routes);
 
 // ──────────────────────────────────────────────
-// 12. 404 + Error handler
+// 13. 404 + Error handler
 // ──────────────────────────────────────────────
 app.use(notFound);
 app.use(errorHandler);

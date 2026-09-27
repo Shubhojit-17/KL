@@ -12,11 +12,14 @@ import HomePage from '@/pages/HomePage';
 import LoginPage from '@/pages/LoginPage';
 import CollectionPage from '@/pages/CollectionPage';
 import ProductPage from '@/pages/ProductPage';
-import ContactPage from '../pages/ContactPage';
+import ContactPage from '@/pages/ContactPage';
+import NotFoundPage from '@/pages/NotFoundPage';
 import CartPage from '@/pages/CartPage';
 import CheckoutPage from '@/pages/CheckoutPage';
 import OrderSuccessPage from '@/pages/OrderSuccessPage';
 import OrdersPage from '@/pages/OrdersPage';
+import OrderDetailPage from '@/pages/OrderDetailPage';
+import ProfilePage from '@/pages/ProfilePage';
 import AdminPage from '@/pages/AdminPage';
 
 export default function App() {
@@ -60,6 +63,14 @@ export default function App() {
 
               {/* Protected routes */}
               <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/cart"
                 element={
                   <ProtectedRoute>
@@ -92,6 +103,14 @@ export default function App() {
                 }
               />
               <Route
+                path="/orders/:id"
+                element={
+                  <ProtectedRoute>
+                    <OrderDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/admin"
                 element={
                   <ProtectedRoute adminOnly>
@@ -99,6 +118,9 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+
+              {/* 404 catch-all */}
+              <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Routes>
         </CartProvider>

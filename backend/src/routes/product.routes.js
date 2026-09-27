@@ -3,11 +3,15 @@
 const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/product.controller');
+const reviewRoutes = require('./review.routes');
 const auth = require('../middleware/auth');
 const admin = require('../middleware/admin');
 const { validate, validateQuery } = require('../middleware/validate');
 const validateObjectId = require('../middleware/validateObjectId');
 const productValidator = require('../validators/product.validator');
+
+// Mount product reviews
+router.use('/:productId/reviews', reviewRoutes);
 
 // Public routes
 router.get(

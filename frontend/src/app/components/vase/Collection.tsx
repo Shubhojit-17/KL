@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { productService, type Product } from '@/services/product.service';
+import { getImageUrl } from '@/lib/image';
 
 export function Collection() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -44,7 +45,7 @@ export function Collection() {
             >
               <div className="w-full aspect-[3/4] overflow-hidden relative border border-transparent transition-all duration-500 group-hover:border-[#C5A059]/30 group-hover:shadow-[0_0_20px_rgba(197,160,89,0.1)]">
                 <img
-                  src={product.images?.[0] || '/placeholder.jpg'}
+                  src={getImageUrl(product.images?.[0])}
                   alt={product.name}
                   loading="lazy"
                   className="w-full h-full object-cover transition-transform duration-1000 ease-out group-hover:scale-105"

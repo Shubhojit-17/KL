@@ -2,6 +2,21 @@
 
 const mongoose = require('mongoose');
 
+const addressSchema = new mongoose.Schema(
+  {
+    fullName: { type: String, required: true, trim: true },
+    phone: { type: String, required: true, trim: true },
+    addressLine1: { type: String, required: true, trim: true },
+    addressLine2: { type: String, trim: true, default: '' },
+    city: { type: String, required: true, trim: true },
+    state: { type: String, required: true, trim: true },
+    pincode: { type: String, required: true, trim: true },
+    country: { type: String, default: 'India', trim: true },
+    isDefault: { type: Boolean, default: false },
+  },
+  { timestamps: true }
+);
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -20,26 +35,40 @@ const userSchema = new mongoose.Schema(
     },
     googleId: {
       type: String,
-      required: [true, 'Google ID is required'],
-      unique: true,
+    },
+    password: {
+      type: String,
+      select: false,
+    },
+    authProvider: {
+      type: String,
+      enum: ['google', 'local'],
+      default: 'google',
     },
     role: {
       type: String,
       enum: ['user', 'admin'],
       default: 'user',
     },
+    addresses: [addressSchema],
+    wishlist: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Product',
+      },
+    ],
   },
   {
-    timestamps: true, // createdAt + updatedAt
+    timestamps: true,
   }
 );
 
-// Note: email and googleId indexes are auto-created by the `unique: true` constraint
+userSchema.index({ googleId: 1 }, { sparse: true });
 
-// Remove sensitive fields from JSON output
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.__v;
+  delete obj.password;
   return obj;
 };
 

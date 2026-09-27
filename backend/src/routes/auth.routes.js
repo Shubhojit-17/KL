@@ -16,6 +16,12 @@ router.post(
   authController.googleLogin
 );
 
+// POST /api/auth/register – Email/password registration
+router.post('/register', authLimiter, authController.registerLocal);
+
+// POST /api/auth/login – Email/password login
+router.post('/login', authLimiter, authController.loginLocal);
+
 // POST /api/auth/refresh – Refresh access token
 router.post('/refresh', authLimiter, authController.refreshAccessToken);
 

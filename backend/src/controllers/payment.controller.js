@@ -1,7 +1,9 @@
 'use strict';
 
 const Order = require('../models/Order');
+const User = require('../models/User');
 const paymentService = require('../services/payment.service');
+const emailService = require('../services/email.service');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
@@ -11,12 +13,13 @@ const logger = require('../utils/logger');
  * Create a Razorpay order from the user's cart.
  */
 const createOrder = asyncHandler(async (req, res) => {
-  const { shippingAddress, idempotencyKey } = req.body;
+  const { shippingAddress, idempotencyKey, couponCode } = req.body;
 
   const orderData = await paymentService.createPaymentOrder(
     req.user._id,
     shippingAddress,
-    idempotencyKey
+    idempotencyKey,
+    couponCode
   );
 
   res.status(201).json({
@@ -108,7 +111,7 @@ const getMyOrders = asyncHandler(async (req, res) => {
  */
 const getMyOrder = asyncHandler(async (req, res) => {
   const order = await Order.findOne({ _id: req.params.id, user: req.user._id })
-    .populate('items.product', 'name images')
+    .populate('items.product', 'name images category price')
     .lean();
 
   if (!order) {
@@ -116,6 +119,20 @@ const getMyOrder = asyncHandler(async (req, res) => {
   }
 
   res.status(200).json({ success: true, data: { order } });
+});
+
+/**
+ * POST /api/payment/orders/my/:id/cancel
+ * Cancel order by customer.
+ */
+const cancelOrder = asyncHandler(async (req, res) => {
+  const order = await paymentService.cancelUserOrder(req.user._id, req.params.id);
+
+  res.status(200).json({
+    success: true,
+    message: 'Order cancelled successfully.',
+    data: { order },
+  });
 });
 
 /**
@@ -199,6 +216,16 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     adminEmail: req.user.email,
   });
 
+  // Send email status update
+  User.findById(order.user)
+    .select('name email')
+    .then((user) => {
+      if (user) {
+        emailService.sendOrderStatusUpdate(order, user.email, user.name, orderStatus).catch(() => {});
+      }
+    })
+    .catch(() => {});
+
   res.status(200).json({ success: true, data: { order } });
 });
 
@@ -208,6 +235,7 @@ module.exports = {
   handleWebhook,
   getMyOrders,
   getMyOrder,
+  cancelOrder,
   getAllOrders,
   updateOrderStatus,
 };

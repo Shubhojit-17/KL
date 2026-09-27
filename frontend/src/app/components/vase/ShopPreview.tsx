@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { productService, type Product } from '@/services/product.service';
+import { getImageUrl } from '@/lib/image';
 
 export function ShopPreview() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -44,7 +45,7 @@ export function ShopPreview() {
               <Link to={`/product/${product._id}`} className="w-full flex flex-col items-center">
                 <div className="w-full overflow-hidden aspect-[3/4] mb-4 relative border border-transparent transition-all duration-500 group-hover:border-[#C5A059]/30">
                    <div className="absolute inset-0 bg-[#4A3528]/20 group-hover:bg-transparent transition-all z-10 duration-500" />
-                   <img src={product.images?.[0] || '/placeholder.jpg'} alt={product.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-1000 ease-out group-hover:scale-105" />
+                   <img src={getImageUrl(product.images?.[0])} alt={product.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-1000 ease-out group-hover:scale-105" />
                 </div>
                 <h3 className="text-center font-['Cormorant_Garamond'] text-lg md:text-xl text-[#FDFBF7] group-hover:text-[#C5A059] transition-colors duration-300">{product.name}</h3>
               </Link>
