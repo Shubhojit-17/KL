@@ -131,38 +131,54 @@ function LoginContent() {
               : 'Continue your curated experience'}
           </motion.p>
 
-          {/* Mode Switcher */}
-          <div className="flex gap-2 mb-6 border-b border-[#C5A059]/30 w-full justify-center">
-            <button
-              onClick={() => setAuthMode('google')}
-              className={`pb-2 font-['Montserrat'] text-xs tracking-wider uppercase transition-colors border-b-2 ${
-                authMode === 'google'
-                  ? 'border-[#C5A059] text-[#2D1B14] font-semibold'
-                  : 'border-transparent text-[#2D1B14]/40 hover:text-[#2D1B14]'
-              }`}
-            >
-              Google
-            </button>
-            <button
-              onClick={() => setAuthMode('login')}
-              className={`pb-2 font-['Montserrat'] text-xs tracking-wider uppercase transition-colors border-b-2 ${
-                authMode === 'login'
-                  ? 'border-[#C5A059] text-[#2D1B14] font-semibold'
-                  : 'border-transparent text-[#2D1B14]/40 hover:text-[#2D1B14]'
-              }`}
-            >
-              Email Sign In
-            </button>
-            <button
-              onClick={() => setAuthMode('register')}
-              className={`pb-2 font-['Montserrat'] text-xs tracking-wider uppercase transition-colors border-b-2 ${
-                authMode === 'register'
-                  ? 'border-[#C5A059] text-[#2D1B14] font-semibold'
-                  : 'border-transparent text-[#2D1B14]/40 hover:text-[#2D1B14]'
-              }`}
-            >
-              Create Account
-            </button>
+          {/* Mode Switcher – Luxury Segmented Pill Controls */}
+          <div className="w-full max-w-sm mb-8">
+            <div className="grid grid-cols-3 p-1.5 bg-[#F2EFE9] border border-[#C5A059]/40 rounded-full shadow-inner gap-1">
+              <button
+                type="button"
+                onClick={() => setAuthMode('google')}
+                className={`py-2 px-3 rounded-full font-['Montserrat'] text-[11px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 ${
+                  authMode === 'google'
+                    ? 'bg-[#4A3528] text-[#FDFBF7] shadow-sm font-semibold'
+                    : 'text-[#2D1B14]/60 hover:text-[#2D1B14] hover:bg-[#EAE5DC]'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/>
+                </svg>
+                Google
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAuthMode('login')}
+                className={`py-2 px-3 rounded-full font-['Montserrat'] text-[11px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 ${
+                  authMode === 'login'
+                    ? 'bg-[#4A3528] text-[#FDFBF7] shadow-sm font-semibold'
+                    : 'text-[#2D1B14]/60 hover:text-[#2D1B14] hover:bg-[#EAE5DC]'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                </svg>
+                Sign In
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAuthMode('register')}
+                className={`py-2 px-3 rounded-full font-['Montserrat'] text-[11px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 ${
+                  authMode === 'register'
+                    ? 'bg-[#4A3528] text-[#FDFBF7] shadow-sm font-semibold'
+                    : 'text-[#2D1B14]/60 hover:text-[#2D1B14] hover:bg-[#EAE5DC]'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                Register
+              </button>
+            </div>
           </div>
 
           {/* Form Content */}
@@ -185,7 +201,7 @@ function LoginContent() {
                     />
                   </div>
                   <button
-                    className="w-full py-3.5 border border-[#C5A059] text-[#2D1B14] font-['Montserrat'] text-xs tracking-[0.2em] uppercase hover:bg-[#C5A059] hover:text-[#2D1B14] transition-all duration-400 flex items-center justify-center gap-3 relative z-0"
+                    className="w-full py-3.5 bg-white border border-[#C5A059]/60 rounded-xl text-[#2D1B14] font-['Montserrat'] text-xs tracking-[0.15em] uppercase hover:bg-[#F2EFE9] hover:border-[#C5A059] shadow-sm transition-all duration-300 flex items-center justify-center gap-3 relative z-0"
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                       <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#C5A059"/>
@@ -208,7 +224,7 @@ function LoginContent() {
               >
                 {authMode === 'register' && (
                   <div>
-                    <label className="block font-['Montserrat'] text-[10px] uppercase tracking-widest text-[#2D1B14]/60 mb-1">
+                    <label className="block font-['Montserrat'] text-[10px] uppercase tracking-widest text-[#2D1B14]/70 mb-1.5 font-medium">
                       Full Name
                     </label>
                     <input
@@ -217,12 +233,12 @@ function LoginContent() {
                       onChange={(e) => setName(e.target.value)}
                       required
                       placeholder="e.g. Eleanor Vance"
-                      className="w-full bg-transparent border-b border-[#C5A059]/40 text-[#2D1B14] font-['Montserrat'] text-xs py-2 px-1 focus:outline-none focus:border-[#C5A059]"
+                      className="w-full bg-white/70 border border-[#C5A059]/40 rounded-xl text-[#2D1B14] font-['Montserrat'] text-xs py-2.5 px-3.5 focus:outline-none focus:border-[#C5A059] focus:bg-white transition-all shadow-sm"
                     />
                   </div>
                 )}
                 <div>
-                  <label className="block font-['Montserrat'] text-[10px] uppercase tracking-widest text-[#2D1B14]/60 mb-1">
+                  <label className="block font-['Montserrat'] text-[10px] uppercase tracking-widest text-[#2D1B14]/70 mb-1.5 font-medium">
                     Email Address
                   </label>
                   <input
@@ -231,11 +247,11 @@ function LoginContent() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     placeholder="you@example.com"
-                    className="w-full bg-transparent border-b border-[#C5A059]/40 text-[#2D1B14] font-['Montserrat'] text-xs py-2 px-1 focus:outline-none focus:border-[#C5A059]"
+                    className="w-full bg-white/70 border border-[#C5A059]/40 rounded-xl text-[#2D1B14] font-['Montserrat'] text-xs py-2.5 px-3.5 focus:outline-none focus:border-[#C5A059] focus:bg-white transition-all shadow-sm"
                   />
                 </div>
                 <div>
-                  <label className="block font-['Montserrat'] text-[10px] uppercase tracking-widest text-[#2D1B14]/60 mb-1">
+                  <label className="block font-['Montserrat'] text-[10px] uppercase tracking-widest text-[#2D1B14]/70 mb-1.5 font-medium">
                     Password (min 6 characters)
                   </label>
                   <input
@@ -245,16 +261,16 @@ function LoginContent() {
                     required
                     placeholder="••••••••"
                     minLength={6}
-                    className="w-full bg-transparent border-b border-[#C5A059]/40 text-[#2D1B14] font-['Montserrat'] text-xs py-2 px-1 focus:outline-none focus:border-[#C5A059]"
+                    className="w-full bg-white/70 border border-[#C5A059]/40 rounded-xl text-[#2D1B14] font-['Montserrat'] text-xs py-2.5 px-3.5 focus:outline-none focus:border-[#C5A059] focus:bg-white transition-all shadow-sm"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full mt-4 py-3 bg-[#4A3528] text-[#FDFBF7] font-['Montserrat'] text-xs tracking-[0.2em] uppercase hover:bg-[#C5A059] hover:text-[#4A3528] transition-all disabled:opacity-40 font-semibold"
+                  className="w-full mt-5 py-3.5 bg-[#4A3528] text-[#FDFBF7] rounded-xl font-['Montserrat'] text-xs tracking-[0.2em] uppercase hover:bg-[#C5A059] hover:text-[#4A3528] transition-all duration-300 disabled:opacity-40 font-semibold shadow-md"
                 >
-                  {submitting
+                    {submitting
                     ? 'Processing...'
                     : authMode === 'register'
                     ? 'Create Atelier Account'
